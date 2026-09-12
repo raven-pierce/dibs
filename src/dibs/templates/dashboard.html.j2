@@ -14,6 +14,9 @@
       <span class="inline-block h-2 w-2 rounded-full bg-clear-fg dark:bg-clear-dfg"></span>
       <span id="count-label">live · {{ rows|length }} name{{ '' if rows|length == 1 else 's' }}</span>
     </span>
+    <button id="backup" class="rounded-md border border-black/10 dark:border-white/15 px-2.5 py-1
+      font-medium hover:border-ink hover:text-ink dark:hover:border-white dark:hover:text-white
+      disabled:opacity-50 transition">Backup</button>
     <button id="reset" class="rounded-md border border-black/10 dark:border-white/15 px-2.5 py-1
       font-medium hover:border-hard-fg hover:text-hard-fg dark:hover:border-hard-dfg
       dark:hover:text-hard-dfg disabled:opacity-50 transition">Reset</button>
@@ -239,14 +242,25 @@ async function refreshTable() {
   } catch (_) {}
 }
 
+$('#backup').addEventListener('click', async () => {
+  const btn = $('#backup'); btn.disabled = true; btn.textContent = 'backing up…';
+  try {
+    const r = await fetch('/api/v1/backup', { method:'POST' });
+    const data = await r.json();
+    alert(data.backup ? `Backed up to ${data.backup}` : 'Nothing to back up.');
+  } catch (_) { alert('could not reach server'); }
+  finally { btn.disabled = false; btn.textContent = 'Backup'; }
+});
+
 $('#reset').addEventListener('click', async () => {
-  if (!confirm('Clear all run history and reports? A backup is saved first.')) return;
+  if (!confirm('Clear all run history and reports?\nA backup is saved first to .cache/backups/.')) return;
   const btn = $('#reset'); btn.disabled = true; btn.textContent = 'resetting…';
   try {
     const r = await fetch('/api/v1/reset', { method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ confirm: true }) });
     const data = await r.json();
-    if (!r.ok) { alert(data.error || 'reset failed'); }
+    if (!r.ok) alert(data.error || 'reset failed');
+    else if (data.backup) alert(`Reset done. Backup saved to ${data.backup}`);
   } catch (_) { alert('could not reach server'); }
   finally { location.reload(); }
 });

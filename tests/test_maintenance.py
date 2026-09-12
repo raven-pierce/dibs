@@ -35,9 +35,19 @@ def test_reset_backs_up_and_clears(tmp_path, monkeypatch):
 def test_reset_no_backup(tmp_path, monkeypatch):
     _wire(tmp_path, monkeypatch)
     history.append(_seed_row("Zephyr"), ts=1.0)
-    assert maintenance.reset(backup=False) is None
+    assert maintenance.reset(with_backup=False) is None
     assert not history.HISTORY_DB.exists()
     assert not (tmp_path / ".cache" / "backups").exists()
+
+
+def test_backup_keeps_originals(tmp_path, monkeypatch):
+    reports = _wire(tmp_path, monkeypatch)
+    history.append(_seed_row("Zephyr"), ts=1.0)
+    made = maintenance.backup()
+    assert (made / "history.sqlite").exists()
+    assert (made / "reports" / "index.html").read_text() == "snapshot"
+    # Non-destructive: originals still there.
+    assert history.HISTORY_DB.exists() and reports.exists()
 
 
 def test_reset_empty_is_safe(tmp_path, monkeypatch):

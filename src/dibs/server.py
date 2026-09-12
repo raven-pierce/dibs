@@ -88,6 +88,12 @@ class Handler(BaseHTTPRequestHandler):
             self._send(f"<pre>error: {type(exc).__name__}: {exc}</pre>", status=500)
 
     def do_POST(self):  # noqa: N802
+        try:
+            self._route_post()
+        except Exception as exc:  # noqa: BLE001 - never drop the connection
+            self._json({"error": f"{type(exc).__name__}: {exc}"}, status=500)
+
+    def _route_post(self):
         path = urlparse(self.path).path.rstrip("/")
         if not path.startswith("/api/v1"):
             self._json({"error": "not found"}, status=404)
@@ -97,6 +103,10 @@ class Handler(BaseHTTPRequestHandler):
             self._api_screen()
         elif sub == "/reset":
             self._api_reset()
+        elif sub == "/backup":
+            from . import maintenance
+            made = maintenance.backup()
+            self._json({"ok": True, "backup": str(made) if made else None})
         elif sub == "/rerun":
             self._rerun(history.latest_overall(), "no runs yet")
         elif sub.startswith("/names/") and sub.endswith("/rerun"):
@@ -191,8 +201,8 @@ class Handler(BaseHTTPRequestHandler):
             self._json({"error": "reset requires {\"confirm\": true}"}, status=400)
             return
         from . import maintenance
-        backup = maintenance.reset(backup=body.get("backup", True))
-        self._json({"ok": True, "backup": str(backup) if backup else None})
+        made = maintenance.reset(with_backup=body.get("backup", True))
+        self._json({"ok": True, "backup": str(made) if made else None})
 
     def _rerun(self, run_row: dict | None, missing_msg: str):
         body = self._read_body()

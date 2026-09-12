@@ -201,23 +201,34 @@ def serve(
 
 
 @app.command()
+def backup() -> None:
+    """Back up the run history and reports to .cache/backups/<timestamp>/."""
+    from . import maintenance
+
+    made = maintenance.backup()
+    if made:
+        console.print(f"[green]Backed up to[/green] {made}")
+    else:
+        console.print("[dim]Nothing to back up.[/dim]")
+
+
+@app.command()
 def reset(
     yes: bool = typer.Option(False, "--yes", "-y", help="Skip the confirmation prompt."),
     no_backup: bool = typer.Option(False, "--no-backup", help="Do not back up before clearing."),
 ) -> None:
     """Clear run history and reports for a fresh start (a backup is saved first)."""
     from . import maintenance
+    from .maintenance import BACKUP_DIR
 
     if not yes:
+        where = "no backup" if no_backup else f"a backup is saved to {BACKUP_DIR}/ first"
         typer.confirm(
-            "This clears all run history and reports "
-            f"{'(no backup)' if no_backup else '(a backup is saved first)'}. Continue?",
-            abort=True,
-        )
-    backup = maintenance.reset(backup=not no_backup)
+            f"This clears all run history and reports ({where}). Continue?", abort=True)
+    made = maintenance.reset(with_backup=not no_backup)
     console.print("[green]Reset done.[/green]")
-    if backup:
-        console.print(f"[dim]Backup: {backup}[/dim]")
+    if made:
+        console.print(f"[dim]Backup: {made}[/dim]")
 
 
 @app.command()
