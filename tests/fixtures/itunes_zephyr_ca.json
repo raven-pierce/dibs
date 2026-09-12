@@ -1,0 +1,4 @@
+{"resultCount":2,"results":[
+ {"trackName":"Zephyr","artistName":"Zephyr Labs","trackViewUrl":"https://apps.apple.com/ca/app/zephyr/id123","bundleId":"com.zephyrlabs.zephyr","kind":"software"},
+ {"trackName":"Weather Zephyr Pro","artistName":"Acme","trackViewUrl":"https://apps.apple.com/ca/app/x/id999","bundleId":"com.acme.wz","kind":"software"}
+]}

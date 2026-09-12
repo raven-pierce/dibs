@@ -1,0 +1,5 @@
+{"took":5,"hits":{"totalValue":2,"hits":[
+ {"id":"87678206","source":{"alive":true,"wordmark":"ZEPHYR","wordmarkPseudoText":["ZEPHYR"],"internationalClass":["IC 042"],"goodsAndServices":["IC 042: Software as a service (SAAS) featuring platform tools."],"ownerName":["Zephyr Cloud Inc. (CORPORATION; CALIFORNIA, USA)"],"registrationId":"5552444"}},
+ {"id":"75886636","source":{"alive":false,"wordmark":"ZEPHYR","wordmarkPseudoText":["ZEPHYR"],"internationalClass":["IC 009"],"goodsAndServices":["(CANCELLED) IC 009: [ PERSONAL COMPUTER TERMINAL EMULATION SOFTWARE ]."],"ownerName":["Zephyr Development Corporation (CORPORATION; TEXAS, USA)"],"registrationId":"2406321"}},
+ {"id":"90000001","source":{"alive":true,"wordmark":"ZEPHYR AIRWORKS","wordmarkPseudoText":["ZEPHYR AIR WORKS"],"internationalClass":["IC 012"],"goodsAndServices":["IC 012: aircraft."],"ownerName":["Cora Aero LLC"],"registrationId":null}}
+]}}

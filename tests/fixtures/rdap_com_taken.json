@@ -1,0 +1,1 @@
+{"objectClassName":"domain","ldhName":"GOOGLE.COM","events":[{"eventAction":"registration","eventDate":"1997-09-15T04:00:00Z"},{"eventAction":"expiration","eventDate":"2028-09-14T04:00:00Z"}],"entities":[{"objectClassName":"entity","handle":"292","roles":["registrar"],"vcardArray":["vcard",[["version",{},"text","4.0"],["fn",{},"text","MarkMonitor Inc."]]]}]}

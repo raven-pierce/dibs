@@ -1,0 +1,5 @@
+Domain Name: GOOGLE.CO
+Registry Domain ID: D111-CO
+Creation Date: 2010-02-25T01:04:59.0Z
+Registrar: MarkMonitor, Inc.
+Domain Status: clientTransferProhibited
