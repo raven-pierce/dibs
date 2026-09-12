@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>dibs — name screening</title>
+<style>
+  :root {
+    --bg:#fbfbf9; --fg:#1a1a1a; --line:#e2e2dc; --card:#fff;
+    --clear:#1a7f37; --clear-bg:#e6f4ea; --partial:#9a6700; --partial-bg:#fff6e0;
+    --hard:#b32424; --hard-bg:#fbe6e6; --unknown:#6b6b6b; --unknown-bg:#efefec; --info:#0b6b75;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#16171a; --fg:#e9e9e6; --line:#2c2e33; --card:#1e2024;
+      --clear:#4ac26b; --clear-bg:#12331d; --partial:#e0b34a; --partial-bg:#332a12;
+      --hard:#ff6b6b; --hard-bg:#3a1717; --unknown:#9a9a9a; --unknown-bg:#26272b;
+      --info:#5fd3df; }
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg);
+    font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
+  header { padding:24px 28px 8px; }
+  h1 { margin:0 0 4px; font-size:22px; }
+  .note { color:var(--unknown); font-size:13px; margin:0 0 16px; }
+  .wrap { padding:0 28px 60px; overflow-x:auto; }
+  table { border-collapse:collapse; width:100%; background:var(--card);
+    border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+  th,td { padding:8px 10px; text-align:center; border-bottom:1px solid var(--line);
+    white-space:nowrap; }
+  th { cursor:pointer; user-select:none; font-size:12px; text-transform:uppercase;
+    letter-spacing:.04em; background:var(--card); position:sticky; top:0; }
+  th:first-child, td:first-child { text-align:left; }
+  th[aria-sort]::after { content:" ▾"; opacity:.5; }
+  tr.row { cursor:pointer; }
+  tr.row:hover td { background:rgba(127,127,127,.06); }
+  .pill { display:inline-block; padding:2px 8px; border-radius:999px; font-size:12px;
+    font-weight:600; }
+  .clear   { color:var(--clear);   background:var(--clear-bg); }
+  .partial { color:var(--partial); background:var(--partial-bg); }
+  .hard    { color:var(--hard);    background:var(--hard-bg); }
+  .unknown { color:var(--unknown); background:var(--unknown-bg); }
+  .info    { color:var(--info); background:transparent; font-variant-numeric:tabular-nums; }
+  .score { font-weight:700; font-variant-numeric:tabular-nums; }
+  .detail td { text-align:left; background:rgba(127,127,127,.04); padding:0; }
+  .detail-inner { padding:12px 16px; display:grid; gap:6px; }
+  .hit { font-size:13px; display:flex; gap:8px; flex-wrap:wrap; align-items:baseline; }
+  .hit .src { font-weight:700; color:var(--info); min-width:80px; }
+  .hit .st { font-weight:600; }
+  .hit .st.TAKEN { color:var(--hard); }
+  .hit .st.AVAILABLE { color:var(--clear); }
+  .hit .st.UNKNOWN { color:var(--unknown); }
+  .hit a { color:inherit; }
+  .hidden { display:none; }
+</style>
+</head>
+<body>
+<header>
+  <h1>dibs — name screening</h1>
+  <p class="note">Knockout filter, not legal advice. Not a NUANS or trademark clearance
+  search. Click a row for every hit and a direct link. Click a column header to sort.</p>
+</header>
+<div class="wrap">
+<table id="t">
+  <thead>
+    <tr>
+      <th data-key="name">Name</th>
+      {% for col in columns %}<th data-key="col{{ loop.index0 }}">{{ col }}</th>{% endfor %}
+      <th data-key="score" aria-sort="ascending">Score</th>
+      <th data-key="unknown">Unk</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in rows %}
+    <tr class="row" data-name="{{ row.name }}" data-score="{{ row.score }}"
+        data-unknown="{{ row.unknown }}">
+      <td>{{ row.name }}</td>
+      {% for cell in row.cells %}
+        <td data-sort="{{ cell.text }}"><span class="pill {{ cell.cls }}">{{ cell.text }}</span></td>
+      {% endfor %}
+      <td class="score" data-sort="{{ row.score }}">{{ row.score }}</td>
+      <td data-sort="{{ row.unknown }}">{{ row.unknown }}</td>
+    </tr>
+    <tr class="detail hidden">
+      <td colspan="{{ columns|length + 3 }}">
+        <div class="detail-inner">
+          {% for d in row.details %}
+          <div class="hit">
+            <span class="src">{{ d.source }}</span>
+            <span class="st {{ d.status }}">{{ d.status }}{% if d.tier %}/{{ d.tier }}{% endif %}</span>
+            <span>{{ d.label }}</span>
+            {% if d.detail %}<span style="opacity:.8">— {{ d.detail }}</span>{% endif %}
+            {% if d.url %}<a href="{{ d.url }}" target="_blank" rel="noopener">verify ↗</a>{% endif %}
+          </div>
+          {% endfor %}
+        </div>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+<script>
+  const table = document.getElementById('t');
+  table.querySelectorAll('tr.row').forEach(row => {
+    row.addEventListener('click', () => {
+      row.nextElementSibling.classList.toggle('hidden');
+    });
+  });
+  table.querySelectorAll('th').forEach((th, idx) => {
+    let asc = true;
+    th.addEventListener('click', () => {
+      const tbody = table.tBodies[0];
+      const pairs = [...tbody.querySelectorAll('tr.row')].map(r => [r, r.nextElementSibling]);
+      pairs.sort((a, b) => {
+        const av = cellVal(a[0], idx), bv = cellVal(b[0], idx);
+        const an = parseFloat(av), bn = parseFloat(bv);
+        const cmp = (!isNaN(an) && !isNaN(bn)) ? an - bn : String(av).localeCompare(String(bv));
+        return asc ? cmp : -cmp;
+      });
+      table.querySelectorAll('th').forEach(h => h.removeAttribute('aria-sort'));
+      th.setAttribute('aria-sort', asc ? 'ascending' : 'descending');
+      asc = !asc;
+      pairs.forEach(([r, d]) => { tbody.appendChild(r); tbody.appendChild(d); });
+    });
+  });
+  function cellVal(row, idx) {
+    const cell = row.children[idx];
+    return cell.dataset.sort !== undefined ? cell.dataset.sort : cell.textContent.trim();
+  }
+</script>
+</body>
+</html>
