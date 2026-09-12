@@ -155,16 +155,15 @@ $$('.chips').forEach(box => {
   entry.addEventListener('blur', () => { addChip(box, entry.value); entry.value=''; });
 });
 
-function collectParams() {
-  const params = new URLSearchParams();
-  params.set('name', $('#f-name').value.trim());
+function collectBody() {
+  const body = { name: $('#f-name').value.trim() };
   $$('.chips').forEach(box => {
-    const field = box.dataset.field;
-    box.querySelectorAll('.chip').forEach(c => params.append(field, c.dataset.value));
+    const vals = [...box.querySelectorAll('.chip')].map(c => c.dataset.value);
     const leftover = box.querySelector('.chip-entry').value.trim();
-    if (leftover) params.append(field, leftover);
+    if (leftover) vals.push(leftover);
+    if (vals.length) body[box.dataset.field] = vals;
   });
-  return params;
+  return body;
 }
 
 form.addEventListener('submit', async (e) => {
@@ -172,8 +171,8 @@ form.addEventListener('submit', async (e) => {
   errEl.hidden = true;
   const btn = $('#f-submit'); btn.disabled = true;
   try {
-    const r = await fetch('/check', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
-      body: collectParams() });
+    const r = await fetch('/api/v1/screen', { method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(collectBody()) });
     const data = await r.json();
     if (!r.ok) { errEl.textContent = data.error || 'failed'; errEl.hidden = false; }
     else {
@@ -205,7 +204,7 @@ function jobCard(j) {
 
 async function poll() {
   try {
-    const r = await fetch('/status', { cache:'no-store' });
+    const r = await fetch('/api/v1/jobs', { cache:'no-store' });
     if (!r.ok) return;
     const { jobs } = await r.json();
     const show = jobs.filter(j => j.state === 'running' || j.state === 'queued'

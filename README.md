@@ -53,6 +53,41 @@ whose progress the page shows. Runs execute one at a time so rate-limited source
 are never double-hit. Because of this the server makes outbound requests and
 writes history — it binds `127.0.0.1` only, but it is not purely read-only.
 
+## API
+
+The same server exposes a JSON API under `/api/v1` so an agent can query history
+and launch screens. No auth — loopback is the boundary, so anything on the host
+can call it.
+
+| Method | Path | Purpose |
+|---|---|---|
+| GET | `/api/v1/health` | `{status, version, names, jobs_running}` |
+| GET | `/api/v1/sources` | checkers, their columns, enabled/blocked |
+| GET | `/api/v1/names` | latest run per name, ranked |
+| GET | `/api/v1/names/{slug}` | `{latest, runs, columns}` — the run timeline |
+| POST | `/api/v1/screen` | launch a screen (returns a job) |
+| GET | `/api/v1/jobs` | recent jobs |
+| GET | `/api/v1/jobs/{id}` | one job's status/result |
+
+`POST /api/v1/screen` takes JSON. `name` is required; `legal`/`tm`/`domains`/`handles`
+are arrays (or pipe-strings); `only`/`skip` restrict checkers; `quick` skips slow
+sources once a hard blocker is found. Add `"wait": true` to block up to 120s
+(cap 300, `wait_seconds` to change) and get the finished result inline; otherwise
+it returns `202` with a job to poll at `/api/v1/jobs/{id}`.
+
+```bash
+curl -sX POST localhost:8787/api/v1/screen -H 'Content-Type: application/json' \
+  -d '{"name":"Kestrel","tm":["Kestrel"],"domains":["kestrel","getkestrel"],"wait":true}'
+```
+
+An identical request that is already queued or running is deduped — you get the
+in-flight job back rather than a second run. A finished run never blocks a new
+one; re-screening a name adds a point to its timeline (and reuses the cached HTTP
+responses, so it doesn't re-hit sources until the cache is stale).
+
+The result object is the same shape everywhere (list, detail, finished job):
+`{name, slug, score, hard, medium, soft, unknown, columns, detail, ts}`.
+
 ## Flexible input (CSV)
 
 A `.csv` gives each name different values per dimension. Columns, all optional
