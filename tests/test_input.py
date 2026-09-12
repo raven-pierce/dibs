@@ -7,7 +7,7 @@ from copy import deepcopy
 from dibs.checkers.rdap import build_domains
 from dibs.cli import _candidate_from_row, _load_candidates, _split
 from dibs.config import DEFAULTS, Config
-from dibs.models import Candidate
+from dibs.models import Candidate, candidate_from_fields
 
 
 def cfg() -> Config:
@@ -72,6 +72,19 @@ def test_candidate_from_row():
 
 def test_candidate_from_row_requires_name():
     assert _candidate_from_row({"legal": "x", "domains": "y"}) is None
+
+
+def test_candidate_from_fields():
+    # Shared by the CSV loader and the dashboard form.
+    c = candidate_from_fields("Kestrel", legal="Kestrel Inc.|Les Kestrel inc.",
+                              tm="Kestrel", domains="kestrel|getkestrel", handles="kestrellabs")
+    assert c.legal == ("Kestrel Inc.", "Les Kestrel inc.")
+    assert c.domains == ("kestrel", "getkestrel")
+    assert candidate_from_fields("  ") is None
+    assert candidate_from_fields(None) is None
+    # Dashboard chip inputs arrive as lists, not pipe-strings.
+    c2 = candidate_from_fields("Kestrel", legal=["Kestrel Inc.", " Les Kestrel inc. ", ""])
+    assert c2.legal == ("Kestrel Inc.", "Les Kestrel inc.")
 
 
 def test_load_candidates_csv(tmp_path):

@@ -111,6 +111,36 @@ class Candidate:
         return [self.slug] if self.slug else []
 
 
+def split_multi(value) -> tuple[str, ...] | None:
+    """Normalize a multi-value field to a tuple, or None if empty. Accepts a
+    pipe-separated string (CSV) or a list/tuple of strings (dashboard form)."""
+    if not value:
+        return None
+    if isinstance(value, str):
+        items = value.split("|")
+    else:
+        items = list(value)
+    parts = tuple(p.strip() for p in items if p and p.strip())
+    return parts or None
+
+
+def candidate_from_fields(
+    name: str | None, legal=None, tm=None, domains=None, handles=None
+) -> Candidate | None:
+    """Build a Candidate from field values (each a pipe-string or a list). Blank
+    name returns None. Shared by the CSV loader and the dashboard form."""
+    name = (name or "").strip()
+    if not name:
+        return None
+    return Candidate(
+        display=name,
+        legal=split_multi(legal),
+        tm=split_multi(tm),
+        domains=split_multi(domains),
+        handles=split_multi(handles),
+    )
+
+
 @dataclass
 class Hit:
     label: str

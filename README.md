@@ -43,10 +43,15 @@ dibs serve            # http://127.0.0.1:8787
 ```
 
 Each `dibs check` appends its results to `.cache/history.sqlite`. `dibs serve`
-opens a localhost-only, read-only dashboard over that history: every screened
-name ranked fewest-blockers-first, each name drilling into its run timeline and
-every hit with a verify link. It renders live, so new runs appear without a
-restart. It binds `127.0.0.1` only and never initiates searches itself.
+opens a localhost-only dashboard over that history: every screened name ranked
+fewest-blockers-first, each name drilling into its run timeline and every hit
+with a verify link. It renders live, so new runs appear without a restart.
+
+You can also **launch checks from the dashboard**: a name field (with optional
+per-dimension `legal`/`tm`/`domains`/`handles` terms) enqueues a background run
+whose progress the page shows. Runs execute one at a time so rate-limited sources
+are never double-hit. Because of this the server makes outbound requests and
+writes history — it binds `127.0.0.1` only, but it is not purely read-only.
 
 ## Flexible input (CSV)
 

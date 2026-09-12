@@ -29,7 +29,7 @@ def _has_hard(results: list[CheckResult]) -> bool:
     )
 
 
-async def _run_checker(checker, candidate, http, config, bucket) -> None:
+async def _run_checker(checker, candidate, http, config, bucket, done_cb=None) -> None:
     try:
         results = await checker.check(candidate, http, config)
     except Exception as exc:  # noqa: BLE001 - a checker must never crash the run
@@ -39,11 +39,13 @@ async def _run_checker(checker, candidate, http, config, bucket) -> None:
             for col in checker.columns
         ]
     bucket.extend(results)
+    if done_cb is not None:
+        done_cb(checker.name)
 
 
 async def run(candidates: list[Candidate], config: Config, *, use_cache: bool = True,
               only: set[str] | None = None, skip: set[str] | None = None,
-              quick: bool = False) -> RunOutcome:
+              quick: bool = False, progress=None) -> RunOutcome:
     outcome = RunOutcome()
     http = Http(config, use_cache=use_cache)
 
@@ -70,11 +72,20 @@ async def run(candidates: list[Candidate], config: Config, *, use_cache: bool = 
     fast = [c for c in checkers if not c.slow]
     slow = [c for c in checkers if c.slow]
 
+    total = len(checkers)
     try:
         for candidate in candidates:
             bucket: list[CheckResult] = []
+            done = 0
+
+            def bump(name, _cand=candidate):
+                nonlocal done
+                done += 1
+                if progress is not None:
+                    progress(_cand.display, name, done, total)
+
             await asyncio.gather(
-                *(_run_checker(c, candidate, http, config, bucket) for c in fast)
+                *(_run_checker(c, candidate, http, config, bucket, bump) for c in fast)
             )
             run_slow = slow
             if quick and _has_hard(bucket):
@@ -82,10 +93,11 @@ async def run(candidates: list[Candidate], config: Config, *, use_cache: bool = 
                     for col in c.columns:
                         bucket.append(CheckResult(c.name, col, candidate,
                                       errors=["skipped (--quick: hard blocker already found)"]))
+                    bump(c.name)
                 run_slow = []
             if run_slow:
                 await asyncio.gather(
-                    *(_run_checker(c, candidate, http, config, bucket) for c in run_slow)
+                    *(_run_checker(c, candidate, http, config, bucket, bump) for c in run_slow)
                 )
             outcome.results[candidate.display] = bucket
     finally:

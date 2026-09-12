@@ -14,7 +14,7 @@ from rich.console import Console
 from . import __version__, data, history
 from .checkers import ALL_CHECKERS
 from .config import Config
-from .models import Candidate
+from .models import Candidate, candidate_from_fields, split_multi
 from .report import (
     history_row,
     render_table,
@@ -31,26 +31,16 @@ console = Console()
 
 
 def _split(cell: str | None) -> tuple[str, ...] | None:
-    """Pipe-separated cell -> tuple of trimmed values, or None if empty."""
-    if not cell:
-        return None
-    parts = tuple(p.strip() for p in cell.split("|") if p.strip())
-    return parts or None
+    return split_multi(cell)
 
 
 def _candidate_from_row(row: dict) -> Candidate | None:
     """Build a Candidate from a CSV row. Columns: name (required), legal, tm,
     domains, handles. Blank columns derive from name. Unknown columns ignored."""
     low = {(k or "").strip().lower(): (v or "").strip() for k, v in row.items()}
-    name = low.get("name")
-    if not name:
-        return None
-    return Candidate(
-        display=name,
-        legal=_split(low.get("legal")),
-        tm=_split(low.get("tm")),
-        domains=_split(low.get("domains")),
-        handles=_split(low.get("handles")),
+    return candidate_from_fields(
+        low.get("name"), low.get("legal"), low.get("tm"),
+        low.get("domains"), low.get("handles"),
     )
 
 
@@ -199,13 +189,14 @@ def sources(config_path: Path | None = typer.Option(None, "--config")) -> None:
 def serve(
     port: int = typer.Option(8787, "--port", "-p", help="Port to bind (localhost only)."),
     host: str = typer.Option("127.0.0.1", "--host", help="Bind address; keep localhost."),
+    config_path: Path | None = typer.Option(None, "--config"),
 ) -> None:
-    """Serve the run-history dashboard on localhost (read-only, live)."""
+    """Serve the run-history dashboard on localhost. Browse history and launch checks."""
+    load_dotenv()
     from .server import serve as run_server
 
-    if not history.HISTORY_DB.exists():
-        console.print("[yellow]No history yet.[/yellow] Run `dibs check ...` first.")
-    run_server(host=host, port=port)
+    config = Config.load(config_path)
+    run_server(config, host=host, port=port)
 
 
 @app.command()

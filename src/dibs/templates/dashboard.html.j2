@@ -10,29 +10,78 @@
     </p>
   </div>
   <div class="flex items-center gap-2 text-xs text-ink-soft dark:text-[#9a9d94]">
-    <span id="live-dot" class="inline-block h-2 w-2 rounded-full bg-clear-fg dark:bg-clear-dfg"></span>
-    <span>live · {{ rows|length }} name{{ '' if rows|length == 1 else 's' }}</span>
+    <span class="inline-block h-2 w-2 rounded-full bg-clear-fg dark:bg-clear-dfg"></span>
+    <span id="count-label">live · {{ rows|length }} name{{ '' if rows|length == 1 else 's' }}</span>
   </div>
 </header>
 
-{% if not rows %}
-  <div class="rounded-xl border border-dashed border-black/10 dark:border-white/10 px-6 py-16 text-center">
-    <p class="text-lg font-semibold">Nothing screened yet</p>
-    <p class="mt-1 text-sm text-ink-soft dark:text-[#9a9d94]">
-      Run <code class="rounded bg-black/5 dark:bg-white/10 px-1.5 py-0.5 font-mono">dibs check &lt;name&gt;</code>
-      and it appears here.
-    </p>
+{# ---- Screen a name ---- #}
+<form id="screen-form" class="mb-5 rounded-2xl border border-black/[0.08] dark:border-white/[0.08]
+    bg-white/70 dark:bg-white/[0.03] p-4 sm:p-5 shadow-sm">
+  <div class="flex flex-col gap-3 sm:flex-row sm:items-end">
+    <label class="flex-1">
+      <span class="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-ink-soft dark:text-[#9a9d94]">Name</span>
+      <input id="f-name" name="name" required autocomplete="off" placeholder="e.g. Kestrel"
+        class="w-full rounded-lg border border-black/10 dark:border-white/15 bg-white dark:bg-[#0f110c]
+               px-3 py-2.5 text-[15px] font-medium outline-none
+               focus:border-clear-fg focus:ring-2 focus:ring-clear-fg/25
+               dark:focus:border-clear-dfg dark:focus:ring-clear-dfg/25 transition">
+    </label>
+    <button id="f-submit" type="submit"
+      class="rounded-lg bg-ink px-5 py-2.5 text-sm font-semibold text-white
+             hover:bg-black disabled:opacity-50 disabled:cursor-not-allowed
+             dark:bg-white dark:text-ink dark:hover:bg-white/90 transition">
+      Screen
+    </button>
   </div>
-{% else %}
+
+  <details class="group mt-3">
+    <summary class="inline-flex cursor-pointer select-none items-center gap-1 text-xs font-medium
+        text-ink-soft dark:text-[#9a9d94] hover:text-ink dark:hover:text-white">
+      <svg class="h-3.5 w-3.5 transition-transform group-open:rotate-90" viewBox="0 0 20 20" fill="currentColor"><path d="M7 5l6 5-6 5V5z"/></svg>
+      Per-dimension terms (optional)
+    </summary>
+    <div class="mt-3 grid gap-3 sm:grid-cols-2">
+      {% set fields = [
+        ('legal','Legal name(s)','Corporations Canada, REQ — add the French name too'),
+        ('tm','Trademark term(s)','USPTO, CIPO'),
+        ('domains','Domain bases','first is primary; TLDs auto-added'),
+        ('handles','Usernames','GitHub, npm, PyPI, social')
+      ] %}
+      {% for key, label, hint in fields %}
+      <div class="block">
+        <span class="mb-1 flex items-baseline justify-between">
+          <span class="text-[11px] font-semibold uppercase tracking-wide text-ink-soft dark:text-[#9a9d94]">{{ label }}</span>
+          <span class="text-[10px] text-ink-soft/70 dark:text-[#9a9d94]/70">{{ hint }}</span>
+        </span>
+        <div class="chips flex min-h-[2.5rem] flex-wrap items-center gap-1.5 rounded-lg border
+             border-black/10 dark:border-white/15 bg-white dark:bg-[#0f110c] px-2 py-1.5
+             focus-within:border-clear-fg focus-within:ring-2 focus-within:ring-clear-fg/20
+             dark:focus-within:border-clear-dfg dark:focus-within:ring-clear-dfg/20 transition"
+             data-field="{{ key }}">
+          <input class="chip-entry min-w-[6rem] flex-1 bg-transparent px-1 py-0.5 text-sm outline-none"
+                 autocomplete="off" placeholder="type, Enter to add">
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </details>
+  <p id="form-error" hidden class="mt-2 text-xs font-medium text-hard-fg dark:text-hard-dfg"></p>
+</form>
+
+{# ---- Running jobs ---- #}
+<div id="jobs" class="mb-5 grid gap-2 empty:hidden"></div>
+
+{# ---- Results table ---- #}
 <div class="mb-3 flex items-center gap-4 text-[11px] text-ink-soft dark:text-[#9a9d94]">
   <span class="flex items-center gap-1"><span class="h-2.5 w-2.5 rounded-full bg-clear-fg dark:bg-clear-dfg"></span>clear</span>
   <span class="flex items-center gap-1"><span class="h-2.5 w-2.5 rounded-full bg-partial-fg dark:bg-partial-dfg"></span>partial</span>
   <span class="flex items-center gap-1"><span class="h-2.5 w-2.5 rounded-full bg-hard-fg dark:bg-hard-dfg"></span>hard blocker</span>
   <span class="flex items-center gap-1"><span class="h-2.5 w-2.5 rounded-full bg-unk-fg dark:bg-unk-dfg"></span>unknown</span>
-  <span class="ml-auto">ranked fewest blockers first</span>
+  <span class="ml-auto hidden sm:inline">ranked fewest blockers first</span>
 </div>
 
-<div class="overflow-x-auto rounded-xl border border-black/[0.07] dark:border-white/[0.07] bg-white/60 dark:bg-white/[0.02] shadow-sm">
+<div id="table-wrap" class="overflow-x-auto rounded-xl border border-black/[0.07] dark:border-white/[0.07] bg-white/60 dark:bg-white/[0.02] shadow-sm {% if not rows %}hidden{% endif %}">
   <table class="w-full border-collapse text-sm">
     <thead>
       <tr class="text-left text-[11px] uppercase tracking-wide text-ink-soft dark:text-[#9a9d94]">
@@ -62,24 +111,131 @@
     </tbody>
   </table>
 </div>
+<div id="empty-state" class="rounded-xl border border-dashed border-black/10 dark:border-white/10 px-6 py-16 text-center {% if rows %}hidden{% endif %}">
+  <p class="text-lg font-semibold">Nothing screened yet</p>
+  <p class="mt-1 text-sm text-ink-soft dark:text-[#9a9d94]">Screen a name above to begin.</p>
+</div>
+
 <p class="mt-6 pb-12 text-xs text-ink-soft dark:text-[#9a9d94]">
-  Not a NUANS or trademark clearance search. Dead marks and dissolved
-  enterprises are shown for context and never counted as blockers.
+  Not a NUANS or trademark clearance search. Dead marks and dissolved enterprises
+  are shown for context and never counted as blockers.
 </p>
-{% endif %}
 {% endblock %}
+
 {% block script %}
 <script>
-  // Live: poll and swap the table body when the history changes.
-  async function refresh() {
-    try {
-      const r = await fetch(location.pathname, { cache: 'no-store' });
-      if (!r.ok) return;
-      const doc = new DOMParser().parseFromString(await r.text(), 'text/html');
-      const fresh = doc.querySelector('tbody'), cur = document.querySelector('tbody');
-      if (fresh && cur && fresh.innerHTML !== cur.innerHTML) cur.innerHTML = fresh.innerHTML;
-    } catch (e) {}
-  }
-  setInterval(refresh, 15000);
+const $ = (s, r=document) => r.querySelector(s);
+const $$ = (s, r=document) => [...r.querySelectorAll(s)];
+const jobsEl = $('#jobs'), form = $('#screen-form'), errEl = $('#form-error');
+const active = new Map();  // job_id -> last state
+let dirty = false;
+
+// ---- Chip inputs: type + Enter/comma to add a tag, × or Backspace to remove ----
+function addChip(box, value) {
+  value = value.trim();
+  if (!value) return;
+  const chip = document.createElement('span');
+  chip.className = 'chip inline-flex items-center gap-1 rounded-md bg-black/[0.06] dark:bg-white/[0.1] ' +
+    'px-2 py-0.5 text-xs font-medium';
+  chip.dataset.value = value;
+  chip.innerHTML = `<span></span><button type="button" class="text-ink-soft hover:text-hard-fg dark:hover:text-hard-dfg" aria-label="remove">×</button>`;
+  chip.firstChild.textContent = value;
+  chip.querySelector('button').addEventListener('click', () => chip.remove());
+  box.insertBefore(chip, box.querySelector('.chip-entry'));
+}
+$$('.chips').forEach(box => {
+  const entry = box.querySelector('.chip-entry');
+  box.addEventListener('click', () => entry.focus());
+  entry.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); addChip(box, entry.value); entry.value=''; }
+    else if (e.key === 'Backspace' && !entry.value) {
+      const chips = box.querySelectorAll('.chip'); if (chips.length) chips[chips.length-1].remove();
+    }
+  });
+  entry.addEventListener('blur', () => { addChip(box, entry.value); entry.value=''; });
+});
+
+function collectParams() {
+  const params = new URLSearchParams();
+  params.set('name', $('#f-name').value.trim());
+  $$('.chips').forEach(box => {
+    const field = box.dataset.field;
+    box.querySelectorAll('.chip').forEach(c => params.append(field, c.dataset.value));
+    const leftover = box.querySelector('.chip-entry').value.trim();
+    if (leftover) params.append(field, leftover);
+  });
+  return params;
+}
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  errEl.hidden = true;
+  const btn = $('#f-submit'); btn.disabled = true;
+  try {
+    const r = await fetch('/check', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
+      body: collectParams() });
+    const data = await r.json();
+    if (!r.ok) { errEl.textContent = data.error || 'failed'; errEl.hidden = false; }
+    else {
+      $('#f-name').value='';
+      $$('.chips .chip').forEach(c => c.remove());
+      poll();
+    }
+  } catch (_) { errEl.textContent = 'could not reach server'; errEl.hidden = false; }
+  finally { btn.disabled = false; }
+});
+
+function jobCard(j) {
+  const pct = j.total ? Math.round(j.done / j.total * 100) : 0;
+  const running = j.state === 'running' || j.state === 'queued';
+  const tone = j.state === 'error' ? 'hard' : (j.state === 'done' ? 'clear' : 'partial');
+  const right = j.state === 'done'
+      ? `<a href="/name/${j.slug}" class="text-xs font-semibold text-clear-fg dark:text-clear-dfg hover:underline">score ${j.score} · view →</a>`
+      : j.state === 'error'
+      ? `<span class="text-xs text-hard-fg dark:text-hard-dfg">${(j.error||'error')}</span>`
+      : `<span class="tnum text-xs text-ink-soft dark:text-[#9a9d94]">${j.checker ? j.checker+' · ' : ''}${j.done}/${j.total||'…'}</span>`;
+  return `<div class="rounded-xl border border-black/[0.08] dark:border-white/[0.08] bg-white/70 dark:bg-white/[0.03] px-4 py-3">
+    <div class="flex items-center justify-between gap-3">
+      <span class="font-semibold">${j.name}</span>${right}
+    </div>
+    ${running ? `<div class="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-black/[0.06] dark:bg-white/[0.08]">
+      <div class="h-full rounded-full bg-partial-fg dark:bg-partial-dfg transition-[width] duration-500" style="width:${pct}%"></div></div>` : ''}
+  </div>`;
+}
+
+async function poll() {
+  try {
+    const r = await fetch('/status', { cache:'no-store' });
+    if (!r.ok) return;
+    const { jobs } = await r.json();
+    const show = jobs.filter(j => j.state === 'running' || j.state === 'queued'
+      || (j.finished && (Date.now()/1000 - j.finished) < 12));
+    jobsEl.innerHTML = show.map(jobCard).join('');
+    for (const j of jobs) {
+      const prev = active.get(j.id);
+      if ((j.state === 'done' || j.state === 'error') && prev !== j.state) dirty = true;
+      active.set(j.id, j.state);
+    }
+    if (dirty && !jobs.some(j => j.state === 'running' || j.state === 'queued')) {
+      dirty = false; await refreshTable();
+    }
+  } catch (_) {}
+}
+
+async function refreshTable() {
+  try {
+    const r = await fetch('/', { cache:'no-store' });
+    if (!r.ok) return;
+    const doc = new DOMParser().parseFromString(await r.text(), 'text/html');
+    for (const id of ['table-wrap','empty-state']) {
+      const fresh = doc.getElementById(id), cur = document.getElementById(id);
+      if (fresh && cur) cur.replaceWith(fresh);
+    }
+    const cl = doc.getElementById('count-label'); if (cl) $('#count-label').textContent = cl.textContent;
+  } catch (_) {}
+}
+
+setInterval(poll, 1500);
+poll();
 </script>
 {% endblock %}
