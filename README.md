@@ -34,6 +34,19 @@ uv run dibs check -f names.txt    # or a .txt (one per line) / .csv (see below)
 ```
 
 Outputs land in `./reports/`: `index.html`, `summary.csv`, one `<name>.md` each.
+Every run is also appended to a local history; browse it with `dibs serve`.
+
+## Dashboard
+
+```bash
+dibs serve            # http://127.0.0.1:8787
+```
+
+Each `dibs check` appends its results to `.cache/history.sqlite`. `dibs serve`
+opens a localhost-only, read-only dashboard over that history: every screened
+name ranked fewest-blockers-first, each name drilling into its run timeline and
+every hit with a verify link. It renders live, so new runs appear without a
+restart. It binds `127.0.0.1` only and never initiates searches itself.
 
 ## Flexible input (CSV)
 
@@ -68,8 +81,8 @@ slug is used.
 | Domains (RDAP) | `.com` `.ca` `domains` | IANA bootstrap per TLD; `.io` via override, `.co` via WHOIS. A 404 with a "blocked/reserved" notice is TAKEN. |
 | USPTO | `USPTO` | **Undocumented** tmsearch JSON backend. Live/dead, Nice classes, goods, owner. Class 9/42 scored separately. |
 | CIPO | `CIPO` | The JSON endpoint the public search form posts to; live 9/42 hits get a capped detail fetch for owner and goods. |
-| Corporations Canada | `CorpCan` | Local index from federal open data. Exact name = hard. |
-| Québec REQ | `REQ` | Local index from the imported open-data ZIP. |
+| Corporations Canada | `CorpCan` | Local index from federal open data. Live exact name = hard; dissolved/inactive shown as context, unscored. |
+| Québec REQ | `REQ` | Local index from the imported open-data ZIP (names + enterprise status). Struck enterprises and former names shown as context, unscored. List the French legal name in `legal` (Quebec requires a French name). |
 | GitHub / npm / PyPI / crates / Docker / Packagist | resp. | Namespace existence per handle. |
 | Apple / Google Play | `Apple` `Play` | Title match only, never a non-empty result set. |
 | Social | `Social` | X, YouTube, Mastodon.social, Bluesky (honest UA). Others are manual links. |
@@ -88,7 +101,13 @@ hard count then unknown count. All weights and class lists are configurable.
 | Hard | 10 | live exact mark in class 9/42; primary `.com`/`.ca`; exact corporate name |
 | Medium | 3 | contains-match mark in 9/42; exact mark in an adjacent class; GitHub/npm; app-store exact title |
 | Soft | 1 | other TLDs and variants; PyPI/crates/Docker/Packagist; social |
-| Info | 0 | footprint counts, dead marks, manual notes |
+| Info | 0 | footprint counts, dead/inactive hits, manual notes |
+
+**Status gating.** A hit only scores if it's live. Dead or expunged trademarks
+(USPTO, CIPO), dissolved or inactive federal corporations, and struck Québec
+enterprises or withdrawn former names are demoted to `Info`: shown in the reports
+as context, never counted as blockers. Unknown status is treated as live
+(conservative). The status vocabularies live in `[status]` in `dibs.toml`.
 
 ## Configuration
 

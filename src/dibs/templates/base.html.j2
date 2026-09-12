@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en" class="h-full">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}dibs{% endblock %}</title>
+<script src="https://cdn.tailwindcss.com/3.4.16"></script>
+<script>
+  tailwind.config = {
+    darkMode: 'media',
+    theme: { extend: {
+      fontFamily: { mono: ['ui-monospace','SFMono-Regular','Menlo','monospace'] },
+      colors: {
+        ink: { DEFAULT:'#12130f', soft:'#4a4d44' },
+        clear:  { fg:'#1a7f37', bg:'#e7f5ec', dfg:'#4ac26b', dbg:'#12331d' },
+        partial:{ fg:'#9a6700', bg:'#fdf3d8', dfg:'#e0b34a', dbg:'#33290f' },
+        hard:   { fg:'#b32424', bg:'#fbe4e4', dfg:'#ff6b6b', dbg:'#3a1717' },
+        unk:    { fg:'#5c5f57', bg:'#eeefe9', dfg:'#9a9d94', dbg:'#26271f' },
+      },
+    } },
+  }
+</script>
+<style>
+  :root { color-scheme: light dark; }
+  body { font-feature-settings: "tnum" 1, "cv01" 1; }
+  .tnum { font-variant-numeric: tabular-nums; }
+  ::selection { background: #d9f0e0; }
+  @media (prefers-color-scheme: dark) { ::selection { background:#1c4a2b; } }
+</style>
+{% block head %}{% endblock %}
+</head>
+<body class="h-full bg-[#faf9f5] text-ink dark:bg-[#111310] dark:text-[#e9eae2] antialiased">
+<div class="mx-auto max-w-[1180px] px-5 sm:px-8">
+{% block body %}{% endblock %}
+</div>
+{% block script %}{% endblock %}
+</body>
+</html>

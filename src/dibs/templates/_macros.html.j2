@@ -1,0 +1,36 @@
+{% macro status_cell(cell) %}
+  {%- set s = cell.status -%}
+  {%- if s == 'TAKEN' and cell.hard -%}
+    {%- set cls = 'text-hard-fg bg-hard-bg dark:text-hard-dfg dark:bg-hard-dbg' -%}
+    {%- set label = 'taken' -%}
+  {%- elif s == 'TAKEN' -%}
+    {%- set cls = 'text-partial-fg bg-partial-bg dark:text-partial-dfg dark:bg-partial-dbg' -%}
+    {%- set label = 'taken' -%}
+  {%- elif s == 'UNKNOWN' -%}
+    {%- set cls = 'text-unk-fg bg-unk-bg dark:text-unk-dfg dark:bg-unk-dbg' -%}
+    {%- set label = 'unknown' -%}
+  {%- else -%}
+    {%- set cls = 'text-clear-fg bg-clear-bg dark:text-clear-dfg dark:bg-clear-dbg' -%}
+    {%- set label = 'clear' -%}
+  {%- endif -%}
+  <span class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold {{ cls }}">
+    {{ label }}{% if cell.count and cell.count > 1 %}<span class="tnum opacity-70">·{{ cell.count }}</span>{% endif %}
+  </span>
+{% endmacro %}
+
+{% macro score_pill(row) %}
+  {%- set tone = 'bg-clear-bg text-clear-fg dark:bg-clear-dbg dark:text-clear-dfg' -%}
+  {%- if row.hard > 0 -%}{%- set tone = 'bg-hard-bg text-hard-fg dark:bg-hard-dbg dark:text-hard-dfg' -%}
+  {%- elif row.score > 0 -%}{%- set tone = 'bg-partial-bg text-partial-fg dark:bg-partial-dbg dark:text-partial-dfg' -%}{%- endif -%}
+  <span class="tnum inline-flex min-w-[2.25rem] justify-center rounded-md px-2 py-1 text-sm font-bold {{ tone }}">{{ row.score }}</span>
+{% endmacro %}
+
+{% macro breakdown(row) %}
+  <span class="tnum text-xs text-ink-soft dark:text-[#9a9d94]">
+    {%- if row.hard %}<b class="text-hard-fg dark:text-hard-dfg">{{ row.hard }} hard</b>{% endif -%}
+    {%- if row.medium %}{% if row.hard %} · {% endif %}{{ row.medium }} med{% endif -%}
+    {%- if row.soft %}{% if row.hard or row.medium %} · {% endif %}{{ row.soft }} soft{% endif -%}
+    {%- if row.unknown %} · {{ row.unknown }} unk{% endif -%}
+    {%- if not (row.hard or row.medium or row.soft or row.unknown) %}no blockers{% endif -%}
+  </span>
+{% endmacro %}

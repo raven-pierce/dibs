@@ -4,17 +4,19 @@ from __future__ import annotations
 
 import asyncio
 import csv
+import time
 from pathlib import Path
 
 import typer
 from dotenv import load_dotenv
 from rich.console import Console
 
-from . import __version__, data
+from . import __version__, data, history
 from .checkers import ALL_CHECKERS
 from .config import Config
 from .models import Candidate
 from .report import (
+    history_row,
     render_table,
     summary_line,
     write_csv,
@@ -123,14 +125,17 @@ def check(
 
     render_table(ranked, outcome.active_columns, console)
 
+    run_ts = time.time()
     for row in ranked:
         write_markdown(row)
+        history.append(history_row(row), ts=run_ts)
     csv_path = write_csv(ranked, outcome.active_columns)
     html_path = write_html(ranked, outcome.active_columns)
 
     console.print()
     console.print(summary_line(ranked))
     console.print(f"[dim]Reports: reports/<name>.md · {csv_path} · {html_path}[/dim]")
+    console.print("[dim]History saved. Browse with `dibs serve`.[/dim]")
 
     if strict and any(r.unknown for r in rows):
         raise typer.Exit(2)
@@ -188,6 +193,19 @@ def sources(config_path: Path | None = typer.Option(None, "--config")) -> None:
         if missing:
             line += f"  [dim]— {missing}[/dim]"
         console.print(line)
+
+
+@app.command()
+def serve(
+    port: int = typer.Option(8787, "--port", "-p", help="Port to bind (localhost only)."),
+    host: str = typer.Option("127.0.0.1", "--host", help="Bind address; keep localhost."),
+) -> None:
+    """Serve the run-history dashboard on localhost (read-only, live)."""
+    from .server import serve as run_server
+
+    if not history.HISTORY_DB.exists():
+        console.print("[yellow]No history yet.[/yellow] Run `dibs check ...` first.")
+    run_server(host=host, port=port)
 
 
 @app.command()

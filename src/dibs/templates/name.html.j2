@@ -1,0 +1,75 @@
+{% extends "base.html.j2" %}
+{% from "_macros.html.j2" import status_cell, score_pill, breakdown %}
+{% block title %}{{ latest.name }} · dibs{% endblock %}
+{% block body %}
+<header class="pt-9 pb-6">
+  <a href="/" class="text-xs text-ink-soft dark:text-[#9a9d94] hover:underline">&larr; all names</a>
+  <div class="mt-2 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
+    <h1 class="text-2xl font-bold tracking-tight">{{ latest.name }}</h1>
+    <div class="flex items-center gap-3">
+      {{ score_pill(latest) }}
+      <span>{{ breakdown(latest) }}</span>
+    </div>
+  </div>
+  <p class="mt-1 text-xs text-ink-soft dark:text-[#9a9d94]">
+    {{ runs|length }} run{{ '' if runs|length == 1 else 's' }} · latest {{ latest.ts|clock }}
+  </p>
+</header>
+
+{# Score timeline #}
+{% if runs|length > 1 %}
+<section class="mb-8">
+  <h2 class="mb-2 text-[11px] font-semibold uppercase tracking-wide text-ink-soft dark:text-[#9a9d94]">Score over time</h2>
+  <div class="flex items-end gap-1.5 overflow-x-auto rounded-lg border border-black/[0.07] dark:border-white/[0.07] p-3">
+    {% set maxs = (runs | map(attribute='score') | max) or 1 %}
+    {% for run in runs | reverse %}
+      <div class="flex flex-col items-center gap-1" title="{{ run.ts|clock }} — score {{ run.score }}">
+        <div class="w-6 rounded-sm {{ 'bg-hard-fg dark:bg-hard-dfg' if run.hard else ('bg-partial-fg dark:bg-partial-dfg' if run.score else 'bg-clear-fg dark:bg-clear-dfg') }}"
+             style="height: {{ 6 + (run.score / maxs * 64) | round(0,'floor') | int }}px"></div>
+        <span class="tnum text-[10px] text-ink-soft dark:text-[#9a9d94]">{{ run.score }}</span>
+      </div>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+{# Latest run — hits grouped by source #}
+<section>
+  <h2 class="mb-3 text-[11px] font-semibold uppercase tracking-wide text-ink-soft dark:text-[#9a9d94]">Latest run — every hit</h2>
+  <div class="grid gap-3">
+    {% set groups = {} %}
+    {% for d in latest.detail %}{% set _ = groups.setdefault(d.column, []).append(d) %}{% endfor %}
+    {% for col in columns %}
+      {% if col in groups %}
+      <div class="overflow-hidden rounded-xl border border-black/[0.07] dark:border-white/[0.07] bg-white/60 dark:bg-white/[0.02]">
+        <div class="flex items-center justify-between border-b border-black/[0.06] dark:border-white/[0.06] bg-black/[0.02] dark:bg-white/[0.03] px-4 py-2">
+          <span class="font-semibold">{{ col }}</span>
+          {% if col in latest.columns %}{{ status_cell(latest.columns[col]) }}{% endif %}
+        </div>
+        <ul class="divide-y divide-black/[0.05] dark:divide-white/[0.05]">
+          {% for d in groups[col] %}
+          <li class="px-4 py-2.5 text-sm">
+            <div class="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+              <span class="rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide
+                {{ 'bg-hard-bg text-hard-fg dark:bg-hard-dbg dark:text-hard-dfg' if d.status=='TAKEN'
+                   else ('bg-unk-bg text-unk-fg dark:bg-unk-dbg dark:text-unk-dfg' if d.status=='UNKNOWN'
+                   else 'bg-clear-bg text-clear-fg dark:bg-clear-dbg dark:text-clear-dfg') }}">
+                {{ d.status }}{% if d.tier and d.tier != 'info' %} · {{ d.tier }}{% endif %}
+              </span>
+              <span class="font-medium">{{ d.label }}</span>
+              {% if d.url %}<a href="{{ d.url }}" target="_blank" rel="noopener"
+                 class="text-xs text-clear-fg dark:text-clear-dfg hover:underline">verify &nearr;</a>{% endif %}
+            </div>
+            {% if d.detail %}<p class="mt-1 text-xs leading-relaxed text-ink-soft dark:text-[#9a9d94]">{{ d.detail }}</p>{% endif %}
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+    {% endfor %}
+  </div>
+</section>
+<p class="mt-8 pb-12 text-xs text-ink-soft dark:text-[#9a9d94]">
+  Screening tool, not legal advice. Verify every hit at its source link.
+</p>
+{% endblock %}

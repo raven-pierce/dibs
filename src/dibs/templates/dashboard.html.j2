@@ -1,0 +1,85 @@
+{% extends "base.html.j2" %}
+{% from "_macros.html.j2" import status_cell, score_pill, breakdown %}
+{% block title %}dibs · screening dashboard{% endblock %}
+{% block body %}
+<header class="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2 pt-9 pb-6">
+  <div>
+    <h1 class="text-2xl font-bold tracking-tight">dibs</h1>
+    <p class="mt-0.5 text-sm text-ink-soft dark:text-[#9a9d94]">
+      Name screening — knockout filter, not legal advice.
+    </p>
+  </div>
+  <div class="flex items-center gap-2 text-xs text-ink-soft dark:text-[#9a9d94]">
+    <span id="live-dot" class="inline-block h-2 w-2 rounded-full bg-clear-fg dark:bg-clear-dfg"></span>
+    <span>live · {{ rows|length }} name{{ '' if rows|length == 1 else 's' }}</span>
+  </div>
+</header>
+
+{% if not rows %}
+  <div class="rounded-xl border border-dashed border-black/10 dark:border-white/10 px-6 py-16 text-center">
+    <p class="text-lg font-semibold">Nothing screened yet</p>
+    <p class="mt-1 text-sm text-ink-soft dark:text-[#9a9d94]">
+      Run <code class="rounded bg-black/5 dark:bg-white/10 px-1.5 py-0.5 font-mono">dibs check &lt;name&gt;</code>
+      and it appears here.
+    </p>
+  </div>
+{% else %}
+<div class="mb-3 flex items-center gap-4 text-[11px] text-ink-soft dark:text-[#9a9d94]">
+  <span class="flex items-center gap-1"><span class="h-2.5 w-2.5 rounded-full bg-clear-fg dark:bg-clear-dfg"></span>clear</span>
+  <span class="flex items-center gap-1"><span class="h-2.5 w-2.5 rounded-full bg-partial-fg dark:bg-partial-dfg"></span>partial</span>
+  <span class="flex items-center gap-1"><span class="h-2.5 w-2.5 rounded-full bg-hard-fg dark:bg-hard-dfg"></span>hard blocker</span>
+  <span class="flex items-center gap-1"><span class="h-2.5 w-2.5 rounded-full bg-unk-fg dark:bg-unk-dfg"></span>unknown</span>
+  <span class="ml-auto">ranked fewest blockers first</span>
+</div>
+
+<div class="overflow-x-auto rounded-xl border border-black/[0.07] dark:border-white/[0.07] bg-white/60 dark:bg-white/[0.02] shadow-sm">
+  <table class="w-full border-collapse text-sm">
+    <thead>
+      <tr class="text-left text-[11px] uppercase tracking-wide text-ink-soft dark:text-[#9a9d94]">
+        <th class="sticky left-0 z-10 bg-white/80 dark:bg-[#15170f] px-4 py-3 font-semibold">Name</th>
+        <th class="px-3 py-3 font-semibold text-right">Score</th>
+        {% for col in columns %}<th class="px-3 py-3 font-semibold text-center whitespace-nowrap">{{ col }}</th>{% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+      <tr class="group border-t border-black/[0.06] dark:border-white/[0.06] hover:bg-clear-bg/40 dark:hover:bg-white/[0.03]">
+        <td class="sticky left-0 z-10 bg-white/90 dark:bg-[#15170f] px-4 py-3 group-hover:bg-clear-bg/60 dark:group-hover:bg-[#1a1c12]">
+          <a href="/name/{{ row.slug }}" class="block">
+            <span class="font-semibold">{{ row.name }}</span>
+            <span class="mt-0.5 block">{{ breakdown(row) }}</span>
+            <span class="mt-0.5 block text-[11px] text-ink-soft/70 dark:text-[#9a9d94]/70">{{ row.ts|ago }}</span>
+          </a>
+        </td>
+        <td class="px-3 py-3 text-right align-middle">{{ score_pill(row) }}</td>
+        {% for col in columns %}
+          <td class="px-3 py-3 text-center align-middle">
+            {% if col in row.columns %}{{ status_cell(row.columns[col]) }}{% else %}<span class="text-black/20 dark:text-white/20">·</span>{% endif %}
+          </td>
+        {% endfor %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+<p class="mt-6 pb-12 text-xs text-ink-soft dark:text-[#9a9d94]">
+  Not a NUANS or trademark clearance search. Dead marks and dissolved
+  enterprises are shown for context and never counted as blockers.
+</p>
+{% endif %}
+{% endblock %}
+{% block script %}
+<script>
+  // Live: poll and swap the table body when the history changes.
+  async function refresh() {
+    try {
+      const r = await fetch(location.pathname, { cache: 'no-store' });
+      if (!r.ok) return;
+      const doc = new DOMParser().parseFromString(await r.text(), 'text/html');
+      const fresh = doc.querySelector('tbody'), cur = document.querySelector('tbody');
+      if (fresh && cur && fresh.innerHTML !== cur.innerHTML) cur.innerHTML = fresh.innerHTML;
+    } catch (e) {}
+  }
+  setInterval(refresh, 15000);
+</script>
+{% endblock %}

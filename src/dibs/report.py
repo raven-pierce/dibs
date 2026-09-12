@@ -185,6 +185,40 @@ def write_html(rows: list[ScoreRow], columns: list[str]) -> Path:
     return path
 
 
+def history_row(row: ScoreRow) -> dict:
+    """Flatten a scored candidate into the structure the history store persists."""
+    by_col = _by_column(row.results)
+    columns = {}
+    for result in row.results:
+        hard = any(h.status == Status.TAKEN and h.tier == Tier.HARD for h in result.hits)
+        taken = sum(1 for h in result.hits if h.status == Status.TAKEN)
+        columns[result.column] = {
+            "status": result.worst.value, "hard": hard, "count": taken,
+        }
+    for col in by_col:  # stable presence even if empty
+        columns.setdefault(col, {"status": "AVAILABLE", "hard": False, "count": 0})
+    detail = []
+    for result in row.results:
+        for h in result.hits:
+            if h.status == Status.AVAILABLE and h.tier == Tier.INFO and not h.detail:
+                continue
+            detail.append({
+                "source": result.source, "column": result.column, "label": h.label,
+                "status": h.status.value, "tier": h.tier.value,
+                "detail": h.detail, "url": h.url,
+            })
+        for err in result.errors:
+            detail.append({"source": result.source, "column": result.column,
+                           "label": "ERROR", "status": "UNKNOWN", "tier": "",
+                           "detail": err, "url": None})
+    return {
+        "name": row.candidate.display, "slug": row.candidate.slug or "unnamed",
+        "score": row.score, "hard": row.hard, "medium": row.medium,
+        "soft": row.soft, "unknown": row.unknown,
+        "columns": columns, "detail": detail,
+    }
+
+
 def summary_line(rows: list[ScoreRow]) -> str:
     if not rows:
         return "No candidates."
