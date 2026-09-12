@@ -1,0 +1,52 @@
+[project]
+name = "dibs"
+version = "0.1.0"
+description = "Brand-name knockout screener: domains, trademarks, dev namespaces, app stores, registries. Screening tool, not legal advice."
+readme = "README.md"
+requires-python = ">=3.11"
+classifiers = [
+    "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+    "Programming Language :: Python :: 3",
+]
+dependencies = [
+    "httpx>=0.27",
+    "typer>=0.12",
+    "rich>=13.7",
+    "jinja2>=3.1",
+    "beautifulsoup4>=4.12",
+    "python-dotenv>=1.0",
+]
+
+[project.scripts]
+dibs = "dibs.cli:app"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "respx>=0.21",
+    "ruff>=0.6",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/dibs"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+markers = ["live: hits real network endpoints; skipped unless --live is passed"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.ruff.lint.per-file-ignores]
+# Typer declares options as call-valued argument defaults by design.
+"src/dibs/cli.py" = ["B008"]

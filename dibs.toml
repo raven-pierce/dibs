@@ -1,0 +1,101 @@
+# dibs configuration. All keys optional; unset keys fall back to built-in defaults
+# (see src/dibs/config.py DEFAULTS). Copy, edit, and pass with --config or keep as
+# dibs.toml in the working directory.
+
+# Contact string embedded in every User-Agent so site operators can reach you
+# instead of blocking you. Prefer the DIBS_CONTACT environment variable (see
+# .env.example) over committing a value here. Blank => crates.io, CIPO, USPTO and
+# Packagist checkers report UNKNOWN.
+contact = ""
+
+[domains]
+# TLDs checked for the bare slug.
+tlds = ["com", "ca", "io", "co", "dev", "app", "works", "ai", "net", "org"]
+# Prefix/suffix variants, each checked only against the given TLD.
+# Format: [text_added, position(prefix|suffix), tld]
+variants = [
+    ["by",    "prefix", "com"],
+    ["get",   "prefix", "com"],
+    ["works", "suffix", "com"],
+    ["works", "suffix", "ca"],
+    ["hq",    "suffix", "com"],
+]
+# TLDs that also get a hyphenated form for multi-word names (zephyr-labs.com).
+hyphen_tlds = ["com", "ca"]
+
+[domains.rdap_overrides]
+# TLDs missing from the IANA bootstrap file, mapped to an RDAP base URL.
+io = "https://rdap.identitydigital.services/rdap/"
+
+[domains.whois_fallback]
+# TLDs with no working RDAP, mapped to a port-43 WHOIS host.
+co = "whois.registry.co"
+
+[trademarks]
+core = [9, 42]              # software, SaaS/software dev — red on a live hit
+adjacent = [35, 38, 41, 36] # business/subscription, telecom/hosting, training, fintech — yellow
+cipo_detail_cap = 10        # max CIPO detail-page fetches per name (owner + goods text)
+
+[weights]
+hard = 10
+medium = 3
+soft = 1
+
+[cache]
+ttl_days = 7          # default response cache lifetime
+bootstrap_ttl_days = 30
+bulk_ttl_days = 7     # Corporations Canada CSV refresh interval
+
+# Minimum seconds between requests to each rate-limit group (host bucket).
+[rate_limits]
+default = 0.2
+rdap = 0.5
+whois = 2.0
+cipo = 2.0
+uspto = 2.0
+github = 0.2
+ghsearch = 6.0
+crates = 1.0
+packagist = 0.3
+appstore = 3.0
+googleplay = 2.0
+wikipedia = 0.3
+hn = 0.4
+
+# Max real network requests per group per calendar day. Groups absent = unlimited.
+[daily_budgets]
+cipo = 400
+uspto = 400
+
+[concurrency]
+global = 8
+
+[retries]
+max = 3
+base_seconds = 1.0
+cap_seconds = 30.0
+
+[timeouts]
+seconds = 20.0
+
+[checkers]
+# Disable any source by setting false.
+rdap = true
+uspto = true
+cipo = true
+github = true
+npm = true
+pypi = true
+crates = true
+dockerhub = true
+packagist = true
+appstore = true
+googleplay = true
+corpcan = true
+req = true
+social = true
+footprint = true
+
+[footprint]
+# Keyless providers always on. Brave activates when BRAVE_API_KEY is set.
+providers = ["wikipedia", "hn", "github", "brave"]
