@@ -9,9 +9,14 @@
       Name screening — knockout filter, not legal advice.
     </p>
   </div>
-  <div class="flex items-center gap-2 text-xs text-ink-soft dark:text-[#9a9d94]">
-    <span class="inline-block h-2 w-2 rounded-full bg-clear-fg dark:bg-clear-dfg"></span>
-    <span id="count-label">live · {{ rows|length }} name{{ '' if rows|length == 1 else 's' }}</span>
+  <div class="flex items-center gap-3 text-xs text-ink-soft dark:text-[#9a9d94]">
+    <span class="flex items-center gap-2">
+      <span class="inline-block h-2 w-2 rounded-full bg-clear-fg dark:bg-clear-dfg"></span>
+      <span id="count-label">live · {{ rows|length }} name{{ '' if rows|length == 1 else 's' }}</span>
+    </span>
+    <button id="reset" class="rounded-md border border-black/10 dark:border-white/15 px-2.5 py-1
+      font-medium hover:border-hard-fg hover:text-hard-fg dark:hover:border-hard-dfg
+      dark:hover:text-hard-dfg disabled:opacity-50 transition">Reset</button>
   </div>
 </header>
 
@@ -233,6 +238,18 @@ async function refreshTable() {
     const cl = doc.getElementById('count-label'); if (cl) $('#count-label').textContent = cl.textContent;
   } catch (_) {}
 }
+
+$('#reset').addEventListener('click', async () => {
+  if (!confirm('Clear all run history and reports? A backup is saved first.')) return;
+  const btn = $('#reset'); btn.disabled = true; btn.textContent = 'resetting…';
+  try {
+    const r = await fetch('/api/v1/reset', { method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ confirm: true }) });
+    const data = await r.json();
+    if (!r.ok) { alert(data.error || 'reset failed'); }
+  } catch (_) { alert('could not reach server'); }
+  finally { location.reload(); }
+});
 
 setInterval(poll, 1500);
 poll();

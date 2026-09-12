@@ -95,6 +95,8 @@ class Handler(BaseHTTPRequestHandler):
         sub = path[len("/api/v1"):]
         if sub == "/screen":
             self._api_screen()
+        elif sub == "/reset":
+            self._api_reset()
         elif sub == "/rerun":
             self._rerun(history.latest_overall(), "no runs yet")
         elif sub.startswith("/names/") and sub.endswith("/rerun"):
@@ -179,6 +181,18 @@ class Handler(BaseHTTPRequestHandler):
         jid = self.jobs.submit(cand, only=body.get("only"), skip=body.get("skip"),
                                quick=bool(body.get("quick")))
         self._respond_job(jid, body)
+
+    def _api_reset(self):
+        body = self._read_body()
+        if body is None:
+            self._json({"error": "invalid JSON body"}, status=400)
+            return
+        if not body.get("confirm"):
+            self._json({"error": "reset requires {\"confirm\": true}"}, status=400)
+            return
+        from . import maintenance
+        backup = maintenance.reset(backup=body.get("backup", True))
+        self._json({"ok": True, "backup": str(backup) if backup else None})
 
     def _rerun(self, run_row: dict | None, missing_msg: str):
         body = self._read_body()

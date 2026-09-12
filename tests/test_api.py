@@ -103,6 +103,15 @@ def test_screen_async_returns_202(client):
     assert r.json()["state"] in ("queued", "running", "done")
 
 
+def test_reset(client):
+    client.post("/api/v1/screen", json={"name": "Wipe", "wait": True})
+    assert client.get("/api/v1/names").json()  # non-empty
+    assert client.post("/api/v1/reset", json={}).status_code == 400  # needs confirm
+    r = client.post("/api/v1/reset", json={"confirm": True})
+    assert r.status_code == 200 and r.json()["ok"] is True
+    assert client.get("/api/v1/names").json() == []
+
+
 def test_errors(client):
     assert client.get("/api/v1/names/nope").status_code == 404
     assert client.get("/api/v1/jobs/nope").status_code == 404

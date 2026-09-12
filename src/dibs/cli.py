@@ -201,6 +201,26 @@ def serve(
 
 
 @app.command()
+def reset(
+    yes: bool = typer.Option(False, "--yes", "-y", help="Skip the confirmation prompt."),
+    no_backup: bool = typer.Option(False, "--no-backup", help="Do not back up before clearing."),
+) -> None:
+    """Clear run history and reports for a fresh start (a backup is saved first)."""
+    from . import maintenance
+
+    if not yes:
+        typer.confirm(
+            "This clears all run history and reports "
+            f"{'(no backup)' if no_backup else '(a backup is saved first)'}. Continue?",
+            abort=True,
+        )
+    backup = maintenance.reset(backup=not no_backup)
+    console.print("[green]Reset done.[/green]")
+    if backup:
+        console.print(f"[dim]Backup: {backup}[/dim]")
+
+
+@app.command()
 def version() -> None:
     """Print the dibs version."""
     console.print(__version__)

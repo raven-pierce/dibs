@@ -74,6 +74,7 @@ can call it.
 | POST | `/api/v1/runs/{id}/rerun` | rerun one specific run's params |
 | GET | `/api/v1/jobs` | recent jobs |
 | GET | `/api/v1/jobs/{id}` | one job's status/result |
+| POST | `/api/v1/reset` | clear history + reports (requires `{"confirm": true}`; backs up first) |
 
 `POST /api/v1/screen` takes JSON. `name` is required; `legal`/`tm`/`domains`/`handles`
 are arrays (or pipe-strings); `only`/`skip` restrict checkers; `quick` skips slow
@@ -189,6 +190,21 @@ index built from open data, under `.cache/data/` (gitignored).
   <https://www.donneesquebec.ca/recherche/dataset/registre-des-entreprises>, then
   `dibs req import <zip>`. The data is **CC BY-NC-SA 4.0 (non-commercial)**;
   screening your own names is personal use, the licence call is yours.
+
+## Reset
+
+For a fresh start, clear the run history and reports. A timestamped backup is
+saved to `.cache/backups/<timestamp>/` first (both the history DB and the reports
+directory), so nothing is truly lost. The response cache and the Corporations
+Canada / REQ indexes are left alone — reset clears accumulated results, not the
+expensive caches.
+
+```bash
+dibs reset            # prompts to confirm; --yes skips, --no-backup disables backup
+```
+
+The dashboard has a **Reset** button (with a confirm dialog); the API exposes
+`POST /api/v1/reset` with `{"confirm": true}`.
 
 ## Caching and politeness
 
