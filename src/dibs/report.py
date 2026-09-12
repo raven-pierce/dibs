@@ -133,20 +133,6 @@ def write_markdown(row: ScoreRow, ts: float | None = None) -> Path:
 
 
 
-def _cell_hist(cell: dict | None) -> tuple[str, str]:
-    """(text, css-class) for a history column dict {status, hard, count}."""
-    if not cell:
-        return "·", ""
-    s = cell.get("status")
-    if s == "TAKEN" and cell.get("hard"):
-        return "taken", "hard"
-    if s == "TAKEN":
-        return "taken", "partial"
-    if s == "UNKNOWN":
-        return "unknown", "unknown"
-    return "clear", "clear"
-
-
 def write_csv_history(rows: list[dict], columns: list[str]) -> Path:
     """Combined CSV snapshot from history (latest-per-name)."""
     REPORTS.mkdir(parents=True, exist_ok=True)
@@ -162,24 +148,17 @@ def write_csv_history(rows: list[dict], columns: list[str]) -> Path:
 
 
 def write_html_history(rows: list[dict], columns: list[str]) -> Path:
-    """Self-contained HTML snapshot from history (latest-per-name)."""
+    """Self-contained HTML snapshot from history (latest-per-name), using the same
+    design as the live dashboard. Rows link to each name's latest Markdown report."""
     REPORTS.mkdir(parents=True, exist_ok=True)
     env = Environment(loader=PackageLoader("dibs", "templates"),
                       autoescape=select_autoescape(["html"]))
-    table_rows = []
-    for row in rows:
-        cells = []
-        for col in columns:
-            text, cls = _cell_hist(row["columns"].get(col))
-            cells.append({"text": text, "cls": cls})
-        table_rows.append({
-            "name": row["name"], "score": row["score"], "hard": row["hard"],
-            "medium": row["medium"], "soft": row["soft"], "unknown": row["unknown"],
-            "cells": cells, "details": row["detail"], "slug": row["slug"],
-        })
-    template = env.get_template("report.html.j2")
+    env.filters["clock"] = lambda ts: time.strftime("%Y-%m-%d %H:%M", time.localtime(ts))
+    template = env.get_template("report_static.html.j2")
     path = REPORTS / "index.html"
-    path.write_text(template.render(columns=columns, rows=table_rows), encoding="utf-8")
+    path.write_text(
+        template.render(columns=columns, rows=rows, generated=time.time()),
+        encoding="utf-8")
     return path
 
 
