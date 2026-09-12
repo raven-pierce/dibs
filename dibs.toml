@@ -36,6 +36,14 @@ core = [9, 42]              # software, SaaS/software dev — red on a live hit
 adjacent = [35, 38, 41, 36] # business/subscription, telecom/hosting, training, fintech — yellow
 cipo_detail_cap = 10        # max CIPO detail-page fetches per name (owner + goods text)
 
+[status]
+# Status vocabularies deciding live (scored) vs dead/inactive (context, unscored).
+# Dead hits are shown but never score, like a lapsed trademark.
+trademark_dead_markers = ["EXPUNGED", "ABANDON", "CANCEL", "REFUS", "WITHDRAW", "DEAD"]
+corpcan_active = ["Active"]         # CorpCan Status meaning live; else dead; blank => live
+req_dead_substrings = ["radi"]      # REQ STAT_IMMAT French label => struck/dead
+req_live_substrings = ["immatricul"]  # => immatriculée / active
+
 [weights]
 hard = 10
 medium = 3

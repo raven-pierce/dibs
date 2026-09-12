@@ -20,9 +20,9 @@ DETAIL_URL = "https://ised-isde.canada.ca/cipo/trademark-search/{appno}?lang=eng
 DEAD_MARKERS = ("EXPUNGED", "ABANDON", "CANCEL", "REFUS", "WITHDRAW", "DEAD")
 
 
-def is_dead(status_desc: str) -> bool:
+def is_dead(status_desc: str, markers=DEAD_MARKERS) -> bool:
     up = (status_desc or "").upper()
-    return any(m in up for m in DEAD_MARKERS)
+    return any(m in up for m in markers)
 
 
 class CipoChecker(BaseChecker):
@@ -38,7 +38,8 @@ class CipoChecker(BaseChecker):
     async def check(self, candidate, http, config):
         result = CheckResult(self.name, "CIPO", candidate)
         tm = config.data["trademarks"]
-        state = {"detail_used": 0, "seen": set()}  # shared across terms
+        markers = config.data["status"]["trademark_dead_markers"]
+        state = {"detail_used": 0, "seen": set(), "markers": markers}  # shared across terms
         for term in candidate.tm_terms():
             docs = await self._search(term, http, candidate.slug, result)
             if docs is not None:
@@ -82,7 +83,7 @@ class CipoChecker(BaseChecker):
                 continue
             state["seen"].add(appno)
             classes = [int(c) for c in doc.get("niceCodes", []) if str(c).isdigit()]
-            live = not is_dead(doc.get("statusDesc", ""))
+            live = not is_dead(doc.get("statusDesc", ""), state["markers"])
             exact = normalize_phrase(mark) == target
             tier = classify(classes, exact, tm["core"], tm["adjacent"])
             owner, goods = "", ""

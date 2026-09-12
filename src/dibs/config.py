@@ -28,6 +28,17 @@ DEFAULTS: dict[str, Any] = {
         "adjacent": [35, 38, 41, 36],
         "cipo_detail_cap": 10,
     },
+    "status": {
+        # Trademark statuses (CIPO statusDesc) whose presence means dead.
+        "trademark_dead_markers": ["EXPUNGED", "ABANDON", "CANCEL", "REFUS",
+                                   "WITHDRAW", "DEAD"],
+        # Corporations Canada Status values that count as live. Anything else
+        # present (Dissolved, Inactive) is dead; blank/unknown is treated live.
+        "corpcan_active": ["Active"],
+        # REQ enterprise STAT_IMMAT French-label substrings (accent/case-insensitive).
+        "req_dead_substrings": ["radi"],   # radiée d'office / radiée sur demande
+        "req_live_substrings": ["immatricul"],  # immatriculée
+    },
     "weights": {"hard": 10, "medium": 3, "soft": 1},
     "cache": {"ttl_days": 7, "bootstrap_ttl_days": 30, "bulk_ttl_days": 7},
     "rate_limits": {
