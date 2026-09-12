@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 from dibs import history
-from dibs.report import write_static_from_history
+from dibs.models import Candidate
+from dibs.report import write_markdown, write_static_from_history
+from dibs.scoring import ScoreRow
 
 
 def _row(name, score, hard, col_status):
@@ -40,3 +42,15 @@ def test_snapshot_latest_per_name(tmp_path, monkeypatch):
     lines = [ln for ln in csv_text.splitlines() if ln.startswith("Zephyr")]
     assert len(lines) == 1  # only the latest run
     assert lines[0].split(",")[1] == "0"  # newest score
+
+
+def test_markdown_per_run_timestamped(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    row = ScoreRow(candidate=Candidate("Kestrel"))
+    write_markdown(row, ts=1_000_000_000)   # fixed run 1
+    write_markdown(row, ts=1_000_000_060)   # run 2, 60s later
+    folder = tmp_path / "reports" / "kestrel"
+    md = sorted(p.name for p in folder.glob("*.md"))
+    # Two timestamped runs kept, plus the stable latest.md pointer.
+    assert "latest.md" in md
+    assert len([m for m in md if m != "latest.md"]) == 2

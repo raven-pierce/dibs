@@ -98,9 +98,13 @@ class JobManager:
                     quick=bool(quick), progress=cb))
                 results = outcome.results.get(candidate.display, [])
                 row = score_candidate(candidate, results, self.config)
-                payload = history_row(row)
-                history.append(payload, ts=time.time())
-                write_markdown(row)
+                payload = history_row(
+                    row, controls={"only": list(only) if only else None,
+                                   "skip": list(skip) if skip else None,
+                                   "quick": bool(quick)})
+                run_ts = time.time()
+                history.append(payload, ts=run_ts)
+                write_markdown(row, ts=run_ts)
                 write_static_from_history()
                 self._set(jid, state="done", finished=time.time(),
                           score=row.score, slug=payload["slug"], result=payload)

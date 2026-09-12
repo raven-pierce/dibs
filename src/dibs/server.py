@@ -89,8 +89,21 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):  # noqa: N802
         path = urlparse(self.path).path.rstrip("/")
-        if path == "/api/v1/screen":
+        if not path.startswith("/api/v1"):
+            self._json({"error": "not found"}, status=404)
+            return
+        sub = path[len("/api/v1"):]
+        if sub == "/screen":
             self._api_screen()
+        elif sub == "/rerun":
+            self._rerun(history.latest_overall(), "no runs yet")
+        elif sub.startswith("/names/") and sub.endswith("/rerun"):
+            slug = unquote(sub[len("/names/"):-len("/rerun")])
+            runs = history.timeline(slug)
+            self._rerun(runs[0] if runs else None, f"no history for '{slug}'")
+        elif sub.startswith("/runs/") and sub.endswith("/rerun"):
+            rid = sub[len("/runs/"):-len("/rerun")]
+            self._rerun(history.run(int(rid)) if rid.isdigit() else None, "no such run")
         else:
             self._json({"error": "not found"}, status=404)
 
@@ -121,6 +134,13 @@ class Handler(BaseHTTPRequestHandler):
                 return
             self._json({"slug": slug, "latest": runs[0], "runs": runs,
                         "columns": history.all_columns(runs)})
+        elif sub.startswith("/runs/"):
+            rid = sub[len("/runs/"):]
+            row = history.run(int(rid)) if rid.isdigit() else None
+            if row is None:
+                self._json({"error": "no such run"}, status=404)
+            else:
+                self._json(row)
         elif sub == "/jobs":
             self._json({"jobs": self.jobs.snapshot()})
         elif sub.startswith("/jobs/"):
@@ -132,11 +152,23 @@ class Handler(BaseHTTPRequestHandler):
         else:
             self._json({"error": "not found"}, status=404)
 
-    def _api_screen(self):
+    def _read_body(self) -> dict | None:
         length = int(self.headers.get("Content-Length", 0))
         try:
-            body = json.loads(self.rfile.read(length) or b"{}")
+            return json.loads(self.rfile.read(length) or b"{}") if length else {}
         except ValueError:
+            return None
+
+    def _respond_job(self, jid: str, body: dict):
+        if body.get("wait"):
+            timeout = min(float(body.get("wait_seconds") or WAIT_DEFAULT), WAIT_CAP)
+            self._json(self.jobs.wait(jid, timeout) or {"error": "job vanished"})
+        else:
+            self._json(self.jobs.job(jid), status=202)
+
+    def _api_screen(self):
+        body = self._read_body()
+        if body is None:
             self._json({"error": "invalid JSON body"}, status=400)
             return
         cand = candidate_from_fields(body.get("name"), body.get("legal"), body.get("tm"),
@@ -146,11 +178,26 @@ class Handler(BaseHTTPRequestHandler):
             return
         jid = self.jobs.submit(cand, only=body.get("only"), skip=body.get("skip"),
                                quick=bool(body.get("quick")))
-        if body.get("wait"):
-            timeout = min(float(body.get("wait_seconds") or WAIT_DEFAULT), WAIT_CAP)
-            self._json(self.jobs.wait(jid, timeout) or {"error": "job vanished"})
-        else:
-            self._json(self.jobs.job(jid), status=202)
+        self._respond_job(jid, body)
+
+    def _rerun(self, run_row: dict | None, missing_msg: str):
+        body = self._read_body()
+        if body is None:
+            self._json({"error": "invalid JSON body"}, status=400)
+            return
+        if run_row is None:
+            self._json({"error": missing_msg}, status=404)
+            return
+        inp = run_row.get("input") or {}
+        cand = candidate_from_fields(
+            inp.get("name") or run_row["name"], inp.get("legal"), inp.get("tm"),
+            inp.get("domains"), inp.get("handles"))
+        if cand is None:  # pre-input history row: rerun by name only
+            from .models import Candidate
+            cand = Candidate(display=run_row["name"])
+        jid = self.jobs.submit(cand, only=inp.get("only"), skip=inp.get("skip"),
+                               quick=bool(inp.get("quick")))
+        self._respond_job(jid, body)
 
 
 def serve(config: Config, host: str = "127.0.0.1", port: int = 8787) -> None:

@@ -33,8 +33,10 @@ uv run dibs check zephyr nimbus   # screen names
 uv run dibs check -f names.txt    # or a .txt (one per line) / .csv (see below)
 ```
 
-Outputs land in `./reports/`: `index.html`, `summary.csv`, one `<name>.md` each.
-Every run is also appended to a local history; browse it with `dibs serve`.
+Outputs land in `./reports/`: `index.html` and `summary.csv` (the latest-per-name
+snapshot), plus `reports/<name>/<timestamp>.md` per run (every run kept) with a
+stable `reports/<name>/latest.md`. Each run is also appended to a local history;
+browse it with `dibs serve`.
 
 ## Dashboard
 
@@ -65,7 +67,11 @@ can call it.
 | GET | `/api/v1/sources` | checkers, their columns, enabled/blocked |
 | GET | `/api/v1/names` | latest run per name, ranked |
 | GET | `/api/v1/names/{slug}` | `{latest, runs, columns}` — the run timeline |
+| GET | `/api/v1/runs/{id}` | one specific run (a slug groups runs; each run has a unique id) |
 | POST | `/api/v1/screen` | launch a screen (returns a job) |
+| POST | `/api/v1/rerun` | rerun the latest run overall, same params |
+| POST | `/api/v1/names/{slug}/rerun` | rerun a name's latest params |
+| POST | `/api/v1/runs/{id}/rerun` | rerun one specific run's params |
 | GET | `/api/v1/jobs` | recent jobs |
 | GET | `/api/v1/jobs/{id}` | one job's status/result |
 
@@ -86,7 +92,10 @@ one; re-screening a name adds a point to its timeline (and reuses the cached HTT
 responses, so it doesn't re-hit sources until the cache is stale).
 
 The result object is the same shape everywhere (list, detail, finished job):
-`{name, slug, score, hard, medium, soft, unknown, columns, detail, ts}`.
+`{id, name, slug, score, hard, medium, soft, unknown, columns, detail, input, ts}`.
+`input` records the dimensions used, which is what a rerun replays. The name
+detail page has a **Rerun** button that reruns those params and adds a timeline
+point. A `slug` identifies a name (all its runs); an `id` identifies one run.
 
 ## Flexible input (CSV)
 

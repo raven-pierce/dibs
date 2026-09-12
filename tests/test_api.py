@@ -69,6 +69,34 @@ def test_screen_wait_then_read(client):
     assert job2["id"] == job["id"]
 
 
+def test_rerun_preserves_input(client):
+    client.post("/api/v1/screen",
+                json={"name": "Rer", "tm": ["Rer"], "domains": ["rer", "getrer"], "wait": True})
+    run_id = client.get("/api/v1/names/rer").json()["latest"]["id"]
+
+    # By slug: reruns the latest with the same dimensions.
+    r2 = client.post("/api/v1/names/rer/rerun", json={"wait": True})
+    assert r2.status_code == 200 and r2.json()["state"] == "done"
+    latest = client.get("/api/v1/names/rer").json()
+    assert len(latest["runs"]) >= 2
+    assert latest["latest"]["input"]["domains"] == ["rer", "getrer"]
+
+    # By run id: fetch and rerun a specific run.
+    got = client.get(f"/api/v1/runs/{run_id}")
+    assert got.status_code == 200 and got.json()["id"] == run_id
+    rr = client.post(f"/api/v1/runs/{run_id}/rerun", json={"wait": True})
+    assert rr.json()["state"] == "done"
+
+    # Latest overall.
+    assert client.post("/api/v1/rerun", json={"wait": True}).json()["state"] == "done"
+
+
+def test_rerun_missing(client):
+    assert client.post("/api/v1/names/nope/rerun").status_code == 404
+    assert client.post("/api/v1/runs/999999/rerun").status_code == 404
+    assert client.get("/api/v1/runs/999999").status_code == 404
+
+
 def test_screen_async_returns_202(client):
     r = client.post("/api/v1/screen", json={"name": "AsyncName"})
     assert r.status_code == 202

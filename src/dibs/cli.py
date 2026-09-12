@@ -115,14 +115,16 @@ def check(
     render_table(ranked, outcome.active_columns, console)
 
     run_ts = time.time()
+    controls = {"only": sorted(only_set) if only_set else None,
+                "skip": sorted(skip_set) if skip_set else None, "quick": quick}
     for row in ranked:
-        write_markdown(row)
-        history.append(history_row(row), ts=run_ts)
+        write_markdown(row, ts=run_ts)
+        history.append(history_row(row, controls=controls), ts=run_ts)
     write_static_from_history()  # full latest-per-name CSV + HTML snapshot
 
     console.print()
     console.print(summary_line(ranked))
-    console.print("[dim]Reports: reports/<name>.md · reports/summary.csv · "
+    console.print("[dim]Reports: reports/<name>/<timestamp>.md · reports/summary.csv · "
                   "reports/index.html[/dim]")
     console.print("[dim]History saved. Browse with `dibs serve`.[/dim]")
 

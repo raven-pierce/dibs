@@ -6,6 +6,7 @@ partial/contains/adjacent, red = hard blocker, dim grey = UNKNOWN.
 from __future__ import annotations
 
 import csv
+import time
 from pathlib import Path
 
 from jinja2 import Environment, PackageLoader, select_autoescape
@@ -74,11 +75,19 @@ def _fmt_hit(h) -> str:
     return line
 
 
-def write_markdown(row: ScoreRow) -> Path:
-    REPORTS.mkdir(parents=True, exist_ok=True)
-    path = REPORTS / f"{row.candidate.slug or 'unnamed'}.md"
+def write_markdown(row: ScoreRow, ts: float | None = None) -> Path:
+    """Write a per-run Markdown report under reports/<slug>/<timestamp>.md (never
+    overwritten, so every run is kept) plus a stable reports/<slug>/latest.md."""
+    ts = ts or time.time()
+    slug = row.candidate.slug or "unnamed"
+    folder = REPORTS / slug
+    folder.mkdir(parents=True, exist_ok=True)
+    stamp = time.strftime("%Y%m%d-%H%M%S", time.localtime(ts))
+    path = folder / f"{stamp}.md"
     lines = [
         f"# {row.candidate.display}",
+        "",
+        f"_Run {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(ts))}_",
         "",
         f"**Score:** {row.score}  |  hard {row.hard}, medium {row.medium}, "
         f"soft {row.soft}, unknown {row.unknown}",
@@ -117,7 +126,9 @@ def write_markdown(row: ScoreRow) -> Path:
     section("Dead / historical marks (context only)", dead_hits)
     section("Unknown (source failed or not checkable — verify by hand)", unknown)
     section("Manual checks", manual)
-    path.write_text("\n".join(lines), encoding="utf-8")
+    text = "\n".join(lines)
+    path.write_text(text, encoding="utf-8")
+    (folder / "latest.md").write_text(text, encoding="utf-8")  # stable pointer
     return path
 
 
@@ -183,8 +194,9 @@ def write_static_from_history() -> None:
     write_html_history(rows, columns)
 
 
-def history_row(row: ScoreRow) -> dict:
-    """Flatten a scored candidate into the structure the history store persists."""
+def history_row(row: ScoreRow, controls: dict | None = None) -> dict:
+    """Flatten a scored candidate into the structure the history store persists.
+    `controls` records only/skip/quick so a run can be reproduced (rerun)."""
     by_col = _by_column(row.results)
     columns = {}
     for result in row.results:
@@ -209,11 +221,22 @@ def history_row(row: ScoreRow) -> dict:
             detail.append({"source": result.source, "column": result.column,
                            "label": "ERROR", "status": "UNKNOWN", "tier": "",
                            "detail": err, "url": None})
+    c = row.candidate
+    controls = controls or {}
     return {
-        "name": row.candidate.display, "slug": row.candidate.slug or "unnamed",
+        "name": c.display, "slug": c.slug or "unnamed",
         "score": row.score, "hard": row.hard, "medium": row.medium,
         "soft": row.soft, "unknown": row.unknown,
         "columns": columns, "detail": detail,
+        "input": {
+            "name": c.display,
+            "legal": list(c.legal) if c.legal else None,
+            "tm": list(c.tm) if c.tm else None,
+            "domains": list(c.domains) if c.domains else None,
+            "handles": list(c.handles) if c.handles else None,
+            "only": controls.get("only"), "skip": controls.get("skip"),
+            "quick": bool(controls.get("quick")),
+        },
     }
 
 

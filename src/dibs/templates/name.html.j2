@@ -9,10 +9,16 @@
     <div class="flex items-center gap-3">
       {{ score_pill(latest) }}
       <span>{{ breakdown(latest) }}</span>
+      <button id="rerun" data-slug="{{ slug }}"
+        class="rounded-lg border border-black/15 dark:border-white/20 px-3 py-1.5 text-xs font-semibold
+               hover:bg-black/[0.04] dark:hover:bg-white/[0.06] disabled:opacity-50 transition">
+        Rerun
+      </button>
     </div>
   </div>
   <p class="mt-1 text-xs text-ink-soft dark:text-[#9a9d94]">
     {{ runs|length }} run{{ '' if runs|length == 1 else 's' }} · latest {{ latest.ts|clock }}
+    <span id="rerun-msg" class="ml-1"></span>
   </p>
 </header>
 
@@ -72,4 +78,24 @@
 <p class="mt-8 pb-12 text-xs text-ink-soft dark:text-[#9a9d94]">
   Screening tool, not legal advice. Verify every hit at its source link.
 </p>
+{% endblock %}
+{% block script %}
+<script>
+const btn = document.getElementById('rerun'), msg = document.getElementById('rerun-msg');
+btn.addEventListener('click', async () => {
+  btn.disabled = true; msg.textContent = 'rerunning…';
+  try {
+    const r = await fetch(`/api/v1/names/${btn.dataset.slug}/rerun`, { method: 'POST' });
+    const job = await r.json();
+    if (!r.ok) { msg.textContent = job.error || 'failed'; btn.disabled = false; return; }
+    const id = job.id;
+    const tick = setInterval(async () => {
+      const s = await (await fetch(`/api/v1/jobs/${id}`, { cache: 'no-store' })).json();
+      msg.textContent = s.state === 'running' ? `running… ${s.checker || ''} ${s.done}/${s.total||'…'}` : '';
+      if (s.state === 'done') { clearInterval(tick); location.reload(); }
+      else if (s.state === 'error') { clearInterval(tick); msg.textContent = s.error || 'error'; btn.disabled = false; }
+    }, 1500);
+  } catch (_) { msg.textContent = 'could not reach server'; btn.disabled = false; }
+});
+</script>
 {% endblock %}
