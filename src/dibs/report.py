@@ -121,68 +121,66 @@ def write_markdown(row: ScoreRow) -> Path:
     return path
 
 
-def write_csv(rows: list[ScoreRow], columns: list[str]) -> Path:
+
+def _cell_hist(cell: dict | None) -> tuple[str, str]:
+    """(text, css-class) for a history column dict {status, hard, count}."""
+    if not cell:
+        return "·", ""
+    s = cell.get("status")
+    if s == "TAKEN" and cell.get("hard"):
+        return "taken", "hard"
+    if s == "TAKEN":
+        return "taken", "partial"
+    if s == "UNKNOWN":
+        return "unknown", "unknown"
+    return "clear", "clear"
+
+
+def write_csv_history(rows: list[dict], columns: list[str]) -> Path:
+    """Combined CSV snapshot from history (latest-per-name)."""
     REPORTS.mkdir(parents=True, exist_ok=True)
     path = REPORTS / "summary.csv"
     with path.open("w", newline="", encoding="utf-8") as fh:
         writer = csv.writer(fh)
         writer.writerow(["name", "score", "hard", "medium", "soft", "unknown", *columns])
         for row in rows:
-            by_col = _by_column(row.results)
-            cells = []
-            for col in columns:
-                result = by_col.get(col)
-                cells.append(result.worst.value if result else "")
-            writer.writerow([
-                row.candidate.display, row.score, row.hard, row.medium,
-                row.soft, row.unknown, *cells,
-            ])
+            cells = [(row["columns"].get(c) or {}).get("status", "") for c in columns]
+            writer.writerow([row["name"], row["score"], row["hard"], row["medium"],
+                             row["soft"], row["unknown"], *cells])
     return path
 
 
-def write_html(rows: list[ScoreRow], columns: list[str]) -> Path:
+def write_html_history(rows: list[dict], columns: list[str]) -> Path:
+    """Self-contained HTML snapshot from history (latest-per-name)."""
     REPORTS.mkdir(parents=True, exist_ok=True)
-    env = Environment(
-        loader=PackageLoader("dibs", "templates"),
-        autoescape=select_autoescape(["html"]),
-    )
-    env.filters["cell"] = _cell
+    env = Environment(loader=PackageLoader("dibs", "templates"),
+                      autoescape=select_autoescape(["html"]))
     table_rows = []
     for row in rows:
-        by_col = _by_column(row.results)
         cells = []
         for col in columns:
-            text, style = _cell(by_col.get(col))
-            cls = {
-                "green": "clear", "bold red": "hard", "yellow": "partial",
-                "dim": "unknown", "cyan": "info",
-            }.get(style, "")
+            text, cls = _cell_hist(row["columns"].get(col))
             cells.append({"text": text, "cls": cls})
-        details = []
-        for result in row.results:
-            for h in result.hits:
-                if h.status == Status.AVAILABLE and h.tier == Tier.INFO and not h.detail:
-                    continue
-                details.append({
-                    "source": result.source,
-                    "label": h.label,
-                    "status": h.status.value,
-                    "tier": h.tier.value,
-                    "detail": h.detail,
-                    "url": h.url,
-                })
-            for err in result.errors:
-                details.append({"source": result.source, "label": "ERROR",
-                                "status": "UNKNOWN", "tier": "", "detail": err, "url": None})
         table_rows.append({
-            "name": row.candidate.display, "score": row.score, "hard": row.hard,
-            "medium": row.medium, "soft": row.soft, "unknown": row.unknown,
-            "cells": cells, "details": details, "slug": row.candidate.slug,
+            "name": row["name"], "score": row["score"], "hard": row["hard"],
+            "medium": row["medium"], "soft": row["soft"], "unknown": row["unknown"],
+            "cells": cells, "details": row["detail"], "slug": row["slug"],
         })
     template = env.get_template("report.html.j2")
     path = REPORTS / "index.html"
     path.write_text(template.render(columns=columns, rows=table_rows), encoding="utf-8")
     return path
+
+
+def write_static_from_history() -> None:
+    """Regenerate the combined CSV + HTML snapshot from the full history so the
+    static reports stay a complete latest-per-name dataset after any run."""
+    from . import history
+
+    rows = history.latest()
+    columns = history.all_columns(rows)
+    write_csv_history(rows, columns)
+    write_html_history(rows, columns)
 
 
 def history_row(row: ScoreRow) -> dict:

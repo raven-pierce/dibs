@@ -19,9 +19,8 @@ from .report import (
     history_row,
     render_table,
     summary_line,
-    write_csv,
-    write_html,
     write_markdown,
+    write_static_from_history,
 )
 from .run import run as run_screening
 from .scoring import rank, score_candidate
@@ -119,12 +118,12 @@ def check(
     for row in ranked:
         write_markdown(row)
         history.append(history_row(row), ts=run_ts)
-    csv_path = write_csv(ranked, outcome.active_columns)
-    html_path = write_html(ranked, outcome.active_columns)
+    write_static_from_history()  # full latest-per-name CSV + HTML snapshot
 
     console.print()
     console.print(summary_line(ranked))
-    console.print(f"[dim]Reports: reports/<name>.md · {csv_path} · {html_path}[/dim]")
+    console.print("[dim]Reports: reports/<name>.md · reports/summary.csv · "
+                  "reports/index.html[/dim]")
     console.print("[dim]History saved. Browse with `dibs serve`.[/dim]")
 
     if strict and any(r.unknown for r in rows):

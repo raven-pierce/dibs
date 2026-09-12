@@ -13,7 +13,7 @@ import uuid
 from . import history
 from .config import Config
 from .models import Candidate
-from .report import history_row
+from .report import history_row, write_markdown, write_static_from_history
 from .run import run as run_screening
 from .scoring import score_candidate
 
@@ -61,6 +61,8 @@ class JobManager:
                 results = outcome.results.get(candidate.display, [])
                 row = score_candidate(candidate, results, self.config)
                 history.append(history_row(row), ts=time.time())
+                write_markdown(row)             # per-name report
+                write_static_from_history()      # full CSV + HTML snapshot
                 self._set(jid, state="done", finished=time.time(),
                           score=row.score, slug=candidate.slug or "unnamed")
             except Exception as exc:  # noqa: BLE001 - surface, don't crash the worker
